@@ -1,0 +1,14 @@
+{
+  "name": "chasm",
+  "version": "0.0.1",
+  "description": "ChASM, an assembly language for my CS 260 class",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "author": "Andrew Slade",
+  "license": "MIT",
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}
