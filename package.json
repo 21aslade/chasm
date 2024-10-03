@@ -5,7 +5,7 @@
     "main": "index.js",
     "type": "module",
     "scripts": {
-        "test": "jest",
+        "test": "npx tsc && npx jest",
         "build": "tsc"
     },
     "author": "Andrew Slade",
