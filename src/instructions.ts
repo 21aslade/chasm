@@ -20,11 +20,11 @@ export type Instruction =
     | { op: "str"; dest: Address; src: Register }
     | { op: "mov"; dest: Register; src: Value }
     | { op: "b"; label: string; condition: Condition }
-    | { op: "cmp"; a: Register; b: Value }
-    | { op: "neg"; dest: Register; src: Register }
-    | { op: "not"; dest: Register; src: Register }
     | { op: "hlt" }
     | { op: "nop" }
+    | { op: "cmp"; a: Register; b: Value }
+    | { op: "neg"; dest: Register; src: Value }
+    | { op: "not"; dest: Register; src: Value }
     | ArithOp<ArithOpcode>;
 
 type ArithOp<S extends string> = { op: S; dest: Register; a: Register; b: Value };
@@ -54,6 +54,23 @@ export type Condition =
     | "vs"
     | "vc";
 
+const arithOpcode = new Set([
+    "add",
+    "sub",
+    "and",
+    "or",
+    "xor",
+    "lsl",
+    "lsr",
+    "asr",
+    "rol",
+    "ror",
+]);
+
+function isArithOpcode(s: string): s is ArithOpcode {
+    return arithOpcode.has(s);
+}
+
 function derefAddr(addr: Address, registers: Uint8Array, memory: Uint8Array): number {
     const address = addr.type === "register" ? registers[addr.reg]!! : addr.addr;
     if (address > memorySize) {
@@ -77,6 +94,19 @@ function evalValue(value: Value, registers: Uint8Array): number {
     } else {
         return value.val;
     }
+}
+
+function operationFlags(a: number, b: number, c: number): Flags {
+    const result = c & 0xff;
+    const overflow =
+        (a >= 0x80 && b >= 0x80 && result < 0x80) ||
+        (a < 0x80 && b < 0x80 && result >= 0x80);
+    return {
+        carry: (c & ~0xff) != 0,
+        negative: result >= 0x80,
+        zero: result === 0,
+        overflow,
+    };
 }
 
 function meetsCondition(cond: Condition, flags: Flags): boolean {
@@ -132,8 +162,24 @@ export function instructionEffect(
             return hlt();
         case "nop":
             return nop();
+        case "cmp":
+            return cmp(processor, instruction.a, instruction.b);
+        case "neg":
+            return neg(processor, instruction.dest, instruction.src);
+        case "not":
+            return not(processor, instruction.dest, instruction.src);
         default:
-            throw new Error("instruction not implemented");
+            if (isArithOpcode(instruction.op)) {
+                return arithOp(
+                    processor,
+                    instruction.op,
+                    instruction.dest,
+                    instruction.a,
+                    instruction.b,
+                );
+            } else {
+                throw new Error("instruction not implemented");
+            }
     }
 }
 
@@ -185,4 +231,110 @@ function hlt(): Effect {
 
 function nop(): Effect {
     return {};
+}
+
+function cmp(processor: Processor, a: Register, b: Value): Effect {
+    const aVal = processor.registers[a]!!;
+    const bVal = evalValue(b, processor.registers);
+    const c = aVal - bVal;
+
+    return {
+        flags: operationFlags(aVal, bVal, c),
+    };
+}
+
+function neg(processor: Processor, dest: Register, src: Value): Effect {
+    const srcVal = evalValue(src, processor.registers);
+    const value = -srcVal & 0xff;
+
+    return {
+        regUpdate: {
+            reg: dest,
+            value: value,
+        },
+        flags: {
+            carry: false,
+            overflow: false,
+            negative: value >= 0x80,
+            zero: value === 0,
+        },
+    };
+}
+
+function not(processor: Processor, dest: Register, src: Value): Effect {
+    const srcVal = evalValue(src, processor.registers);
+    const value = ~srcVal!! & 0xff;
+
+    return {
+        regUpdate: {
+            reg: dest,
+            value,
+        },
+        flags: {
+            carry: false,
+            overflow: false,
+            negative: value >= 0x80,
+            zero: value === 0,
+        },
+    };
+}
+
+function arithOp(
+    processor: Processor,
+    op: ArithOpcode,
+    dest: Register,
+    a: Register,
+    b: Value,
+): Effect {
+    const aVal = processor.registers[a]!!;
+    const bVal = evalValue(b, processor.registers);
+    const c = operation(op)(aVal, bVal);
+
+    return {
+        regUpdate: {
+            reg: dest,
+            value: c & 0xff,
+        },
+        flags: operationFlags(aVal, bVal, c),
+    };
+}
+
+function operation(op: ArithOpcode): (a: number, b: number) => number {
+    switch (op) {
+        case "add":
+            return (a, b) => a + b;
+        case "sub":
+            return (a, b) => a + (0x100 - b);
+        case "and":
+            return (a, b) => a & b;
+        case "or":
+            return (a, b) => a | b;
+        case "xor":
+            return (a, b) => a ^ b;
+        case "lsl":
+            return (a, b) => (a << b) & 0xff;
+        case "lsr":
+            return (a, b) => (a >> b) & 0xff;
+        case "asr":
+            return (a, b) => asr(a, b);
+        case "rol":
+            return rotateLeft;
+        case "ror":
+            return (a, b) => rotateLeft(a, -b);
+    }
+}
+
+function asr(a: number, b: number): number {
+    const sign = (a & 0x80) !== 0 ? 0xff : 0x00;
+    const removed = 8 - b > 0 ? 8 - b : 0;
+    const extension = (sign >> removed) << removed;
+    const shifted = a >> b;
+    return shifted | extension;
+}
+
+function rotateLeft(a: number, b: number): number {
+    const constrained = b >= 0 ? b % 8 : 8 - (-b % 8);
+    const upper = (a << constrained) & 0xff;
+    const lower = (a >> (8 - constrained)) & 0xff;
+    return upper | lower;
 }
