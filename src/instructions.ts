@@ -23,8 +23,6 @@ export type Instruction =
     | { op: "cmp"; a: Register; b: Value }
     | { op: "neg"; dest: Register; src: Register }
     | { op: "not"; dest: Register; src: Register }
-    | { op: "in"; reg: Register }
-    | { op: "out"; reg: Register }
     | { op: "hlt" }
     | { op: "nop" }
     | ArithOp<ArithOpcode>;

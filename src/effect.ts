@@ -5,7 +5,6 @@ export type Effect = {
     flags?: Partial<Flags>;
     write?: Write;
     regUpdate?: RegUpdate;
-    output?: number;
     jump?: number;
     halt?: boolean;
 };
