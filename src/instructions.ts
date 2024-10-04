@@ -67,7 +67,11 @@ const arithOpcode = new Set([
     "ror",
 ]);
 
-function isArithOpcode(s: string): s is ArithOpcode {
+export function isRegister(n: number): n is Register {
+    return Number.isInteger(n) && n <= 7;
+}
+
+export function isArithOpcode(s: string): s is ArithOpcode {
     return arithOpcode.has(s);
 }
 
