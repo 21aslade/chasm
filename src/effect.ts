@@ -54,6 +54,8 @@ export function applyEffect(processor: Processor, effect: Effect) {
 
     if (effect.jump !== undefined) {
         processor.pc = effect.jump;
+    } else {
+        processor.pc++;
     }
 
     if (effect.halt !== undefined) {
