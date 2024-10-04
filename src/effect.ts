@@ -57,6 +57,43 @@ export function applyEffect(processor: Processor, effect: Effect) {
     }
 
     if (effect.halt !== undefined) {
-        processor.halted = true;
+        processor.halted = effect.halt;
     }
+}
+
+function invertFlags(original: Flags, delta: Partial<Flags>): Partial<Flags> {
+    return {
+        carry: delta.carry !== undefined ? original.carry : undefined,
+        negative: delta.negative !== undefined ? original.negative : undefined,
+        overflow: delta.overflow !== undefined ? original.overflow : undefined,
+        zero: delta.zero !== undefined ? original.zero : undefined,
+    };
+}
+
+export function invertEffect(processor: Processor, effect: Effect): Effect {
+    const flags =
+        effect.flags !== undefined
+            ? invertFlags(processor.flags, effect.flags)
+            : undefined;
+    const write =
+        effect.write !== undefined
+            ? { addr: effect.write.addr, value: processor.memory[effect.write.addr]!! }
+            : undefined;
+    const regUpdate =
+        effect.regUpdate !== undefined
+            ? {
+                  reg: effect.regUpdate.reg,
+                  value: processor.registers[effect.regUpdate.reg]!!,
+              }
+            : undefined;
+    const jump = processor.pc;
+    const halt = effect.halt ? !effect.halt : undefined;
+
+    return {
+        flags,
+        write,
+        regUpdate,
+        jump,
+        halt,
+    };
 }

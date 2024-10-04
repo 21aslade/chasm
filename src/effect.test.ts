@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 import { initializeProcessor } from "../dist/processor.js";
-import { applyEffect, Effect } from "../dist/effect.js";
+import { applyEffect, Effect, invertEffect } from "../dist/effect.js";
 
 describe("effect", () => {
     it("applies register update", () => {
@@ -91,4 +91,58 @@ describe("effect", () => {
         expect(processor.pc).toBe(200);
         expect(processor.halted).toBe(true);
     });
+});
+
+describe("invertEffect", () => {
+    it("inverts a register update", () => {
+        const processor = initializeProcessor();
+        processor.pc = 10;
+        processor.registers[2] = 100; // Initial value of register 2
+    
+        const effect: Effect = {
+            regUpdate: {
+                reg: 2,
+                value: 200, // The effect sets register 2 to 200
+            },
+        };
+    
+        expect(invertEffect(processor, effect)).toEqual({
+            regUpdate: {
+                reg: 2,
+                value: 100, // The inversion should restore the previous value
+            },
+            jump: 10, // Default increment needs to be undone
+        });
+    });
+    it("inverts a memory write", () => {
+        const processor = initializeProcessor();
+        processor.memory[50] = 123; // Initial value at memory address 50
+    
+        const effect: Effect = {
+            write: {
+                addr: 50,
+                value: 999, // The effect writes 999 to memory address 50
+            },
+        };
+    
+        expect(invertEffect(processor, effect)).toEqual({
+            write: {
+                addr: 50,
+                value: 123, // The inversion should restore the original memory value
+            },
+            jump: 0, // Default increment needs to be undone
+        });
+    });
+    it("inverts a jump effect", () => {
+        const processor = initializeProcessor();
+        processor.pc = 10; // Initial program counter
+    
+        const effect: Effect = {
+            jump: 20, // The effect jumps to instruction 20
+        };
+    
+        expect(invertEffect(processor, effect)).toEqual({
+            jump: 10, // The inversion should set the pc back to its original value
+        });
+    });    
 });
