@@ -18,13 +18,13 @@ export type ArithOpcode =
 export type Instruction =
     | { op: "ldr"; dest: Register; src: Address }
     | { op: "str"; dest: Address; src: Register }
-    | { op: "mov"; dest: Register; src: Value }
     | { op: "b"; label: string; condition: Condition }
+    | { op: "call"; label: string }
+    | { op: "ret" }
     | { op: "hlt" }
     | { op: "nop" }
     | { op: "cmp"; a: Register; b: Value }
-    | { op: "neg"; dest: Register; src: Value }
-    | { op: "not"; dest: Register; src: Value }
+    | { op: "mov" | "neg" | "not"; dest: Register; src: Value }
     | ArithOp<ArithOpcode>;
 
 type ArithOp<S extends string> = { op: S; dest: Register; a: Register; b: Value };
@@ -162,6 +162,10 @@ export function instructionEffect(
             return mov(processor, instruction.dest, instruction.src);
         case "b":
             return b(processor, labels, instruction.label, instruction.condition);
+        case "call":
+            return call(processor, labels, instruction.label);
+        case "ret":
+            return ret(processor);
         case "hlt":
             return hlt();
         case "nop":
@@ -223,6 +227,24 @@ function b(
     if (meetsCondition(contition, processor.flags)) {
         return {
             jump: labels.get(label),
+        };
+    } else {
+        return {};
+    }
+}
+
+function call(processor: Processor, labels: Map<string, number>, label: string): Effect {
+    return {
+        jump: labels.get(label),
+        stack: { type: "push", val: processor.pc + 1 },
+    };
+}
+
+function ret(processor: Processor): Effect {
+    if (processor.callStack.length > 0) {
+        return {
+            jump: processor.callStack[processor.callStack.length - 1],
+            stack: { type: "pop" },
         };
     } else {
         return {};

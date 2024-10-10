@@ -3,6 +3,7 @@ export type Processor = {
     memory: Uint8Array;
     flags: Flags;
     pc: number;
+    callStack: number[];
     halted: boolean;
 };
 
@@ -27,6 +28,7 @@ export function initializeProcessor(): Processor {
             negative: false,
         },
         pc: 0,
+        callStack: [],
         halted: false,
     };
 }

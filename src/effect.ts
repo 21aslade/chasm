@@ -6,6 +6,7 @@ export type Effect = {
     write?: Write;
     regUpdate?: RegUpdate;
     jump?: number;
+    stack?: StackUpdate;
     halt?: boolean;
 };
 
@@ -18,6 +19,8 @@ type Write = {
     value: number;
     addr: number;
 };
+
+type StackUpdate = { type: "push"; val: number } | { type: "pop" };
 
 function updateReg(registers: Uint8Array, update: RegUpdate) {
     registers[update.reg] = update.value;
@@ -58,6 +61,15 @@ export function applyEffect(processor: Processor, effect: Effect) {
         processor.pc++;
     }
 
+    switch (effect.stack?.type) {
+        case "push":
+            processor.callStack.push(effect.stack.val);
+            break;
+        case "pop":
+            processor.callStack.pop();
+            break;
+    }
+
     if (effect.halt !== undefined) {
         processor.halted = effect.halt;
     }
@@ -70,6 +82,19 @@ function invertFlags(original: Flags, delta: Partial<Flags>): Partial<Flags> {
         overflow: delta.overflow !== undefined ? original.overflow : undefined,
         zero: delta.zero !== undefined ? original.zero : undefined,
     };
+}
+
+function invertStack(original: number[], update: StackUpdate): StackUpdate | undefined {
+    switch (update.type) {
+        case "pop":
+            if (original.length > 0) {
+                return { type: "push", val: original[original.length - 1]!! };
+            } else {
+                return undefined;
+            }
+        case "push":
+            return { type: "pop" };
+    }
 }
 
 export function invertEffect(processor: Processor, effect: Effect): Effect {
@@ -90,12 +115,17 @@ export function invertEffect(processor: Processor, effect: Effect): Effect {
             : undefined;
     const jump = processor.pc;
     const halt = effect.halt ? !effect.halt : undefined;
+    const stack =
+        effect.stack !== undefined
+            ? invertStack(processor.callStack, effect.stack)
+            : undefined;
 
     return {
         flags,
         write,
         regUpdate,
         jump,
+        stack,
         halt,
     };
 }

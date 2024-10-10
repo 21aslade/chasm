@@ -75,6 +75,31 @@ describe("instructions", () => {
         });
     });
 
+    it("calls the given label", () => {
+        const processor = initializeProcessor();
+        const labels = new Map([["label1", 10]]);
+
+        const instruction: Instruction = { op: "call", label: "label1" };
+
+        expect(instructionEffect(processor, labels, instruction)).toEqual({
+            jump: 10,
+            stack: { type: "push", val: 1 },
+        });
+    });
+
+    it("returns from subroutine", () => {
+        const processor = initializeProcessor();
+        processor.callStack.push(30);
+        const labels = new Map([["label1", 10]]);
+
+        const instruction: Instruction = { op: "ret" };
+
+        expect(instructionEffect(processor, labels, instruction)).toEqual({
+            jump: 30,
+            stack: { type: "pop" },
+        });
+    });
+
     it("halts processor", () => {
         const processor = initializeProcessor();
         const labels = new Map();

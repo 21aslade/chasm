@@ -58,6 +58,29 @@ describe("effect", () => {
         expect(processor.pc).toBe(100);
     });
 
+    it("pushes to stack", () => {
+        const processor = initializeProcessor();
+        const effect: Effect = {
+            stack: { type: "push", val: 0x42 },
+        };
+
+        applyEffect(processor, effect);
+
+        expect(processor.callStack).toEqual([0x42]);
+    });
+
+    it("pops from stack", () => {
+        const processor = initializeProcessor();
+        processor.callStack.push(0x42);
+        const effect: Effect = {
+            stack: { type: "pop" },
+        };
+
+        applyEffect(processor, effect);
+
+        expect(processor.callStack).toEqual([]);
+    });
+
     it("halts the processor", () => {
         const processor = initializeProcessor();
         const effect: Effect = {
@@ -98,14 +121,14 @@ describe("invertEffect", () => {
         const processor = initializeProcessor();
         processor.pc = 10;
         processor.registers[2] = 100; // Initial value of register 2
-    
+
         const effect: Effect = {
             regUpdate: {
                 reg: 2,
                 value: 200, // The effect sets register 2 to 200
             },
         };
-    
+
         expect(invertEffect(processor, effect)).toEqual({
             regUpdate: {
                 reg: 2,
@@ -117,14 +140,14 @@ describe("invertEffect", () => {
     it("inverts a memory write", () => {
         const processor = initializeProcessor();
         processor.memory[50] = 123; // Initial value at memory address 50
-    
+
         const effect: Effect = {
             write: {
                 addr: 50,
                 value: 999, // The effect writes 999 to memory address 50
             },
         };
-    
+
         expect(invertEffect(processor, effect)).toEqual({
             write: {
                 addr: 50,
@@ -136,13 +159,13 @@ describe("invertEffect", () => {
     it("inverts a jump effect", () => {
         const processor = initializeProcessor();
         processor.pc = 10; // Initial program counter
-    
+
         const effect: Effect = {
             jump: 20, // The effect jumps to instruction 20
         };
-    
+
         expect(invertEffect(processor, effect)).toEqual({
             jump: 10, // The inversion should set the pc back to its original value
         });
-    });    
+    });
 });
