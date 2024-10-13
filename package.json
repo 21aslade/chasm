@@ -2,10 +2,14 @@
     "name": "chasm",
     "version": "0.0.1",
     "description": "ChASM, an assembly language for my CS 260 class",
-    "main": "index.js",
+    "exports": {
+        ".": "./dist/index.js",
+        "./*": "./dist/*.js"
+    },
     "type": "module",
     "scripts": {
-        "test": "npx tsc && npx jest",
+        "prepare": "npm run build",
+        "test": "tsc && jest",
         "build": "tsc"
     },
     "author": "Andrew Slade",
