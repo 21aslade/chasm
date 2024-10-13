@@ -9,8 +9,8 @@
     "type": "module",
     "scripts": {
         "prepare": "npm run build",
-        "test": "tsc && jest",
-        "build": "tsc"
+        "test": "npx tsc && npx jest",
+        "build": "npx tsc"
     },
     "author": "Andrew Slade",
     "license": "MIT",
