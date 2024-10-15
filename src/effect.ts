@@ -22,57 +22,73 @@ type Write = {
 
 type StackUpdate = { type: "push"; val: number } | { type: "pop" };
 
-function updateReg(registers: Uint8Array, update: RegUpdate) {
-    registers[update.reg] = update.value;
+function updateReg(registers: Uint8Array, update: RegUpdate): Uint8Array {
+    const result = new Uint8Array(registers);
+    result[update.reg] = update.value;
+    return result;
 }
 
-function applyWrite(memory: Uint8Array, write: Write) {
+function applyWrite(memory: Uint8Array, write: Write): Uint8Array {
     if (write.addr > memorySize) {
         throw new Error(
             `Attempted to write to out of bounds address ${write.addr} (value ${write.value})`,
         );
     }
-    memory[write.addr] = write.value;
+
+    const result = new Uint8Array(memory);
+    result[write.addr] = write.value;
+    return result;
 }
 
-function applyFlags(flags: Flags, setters: Partial<Flags>) {
-    flags.carry = setters.carry ?? flags.carry;
-    flags.negative = setters.negative ?? flags.negative;
-    flags.overflow = setters.overflow ?? flags.overflow;
-    flags.zero = setters.zero ?? flags.zero;
+function applyFlags(flags: Flags, setters: Partial<Flags>): Flags {
+    return {
+        carry: setters.carry ?? flags.carry,
+        negative: setters.negative ?? flags.negative,
+        overflow: setters.overflow ?? flags.overflow,
+        zero: setters.zero ?? flags.zero,
+    };
 }
 
-export function applyEffect(processor: Processor, effect: Effect) {
-    if (effect.flags !== undefined) {
-        applyFlags(processor.flags, effect.flags);
-    }
+export function applyEffect(processor: Processor, effect: Effect): Processor {
+    const flags =
+        effect.flags !== undefined
+            ? applyFlags(processor.flags, effect.flags)
+            : processor.flags;
 
-    if (effect.write !== undefined) {
-        applyWrite(processor.memory, effect.write);
-    }
+    const memory =
+        effect.write !== undefined
+            ? applyWrite(processor.memory, effect.write)
+            : processor.memory;
 
-    if (effect.regUpdate !== undefined) {
-        updateReg(processor.registers, effect.regUpdate);
-    }
+    const registers =
+        effect.regUpdate !== undefined
+            ? updateReg(processor.registers, effect.regUpdate)
+            : processor.registers;
 
-    if (effect.jump !== undefined) {
-        processor.pc = effect.jump;
-    } else {
-        processor.pc++;
-    }
+    const pc = effect.jump ?? processor.pc + 1;
 
-    switch (effect.stack?.type) {
-        case "push":
-            processor.callStack.push(effect.stack.val);
-            break;
-        case "pop":
-            processor.callStack.pop();
-            break;
-    }
+    const callStack =
+        (() => {
+            switch (effect.stack?.type) {
+                case "push":
+                    return [...processor.callStack, effect.stack.val];
+                case "pop":
+                    return processor.callStack.slice(0, processor.callStack.length - 1);
+                default:
+                    return undefined;
+            }
+        })() ?? processor.callStack;
 
-    if (effect.halt !== undefined) {
-        processor.halted = effect.halt;
-    }
+    const halted = effect.halt ?? processor.halted;
+
+    return {
+        flags,
+        memory,
+        registers,
+        pc,
+        callStack,
+        halted,
+    };
 }
 
 function invertFlags(original: Flags, delta: Partial<Flags>): Partial<Flags> {
