@@ -206,21 +206,41 @@ const line = alt<Line>(
 
 export const parseFile = completed(many0(line));
 
-export function toInstructions(lines: Line[]): [Instruction[], Map<string, number>] {
+export type Program = {
+    instructions: Instruction[];
+    labels: Map<string, number>;
+    pcToLine: number[];
+    lineToPc: (number | undefined)[];
+};
+
+export function toProgram(lines: Line[]): Program {
     let instructions = [];
     let labels = new Map<string, number>();
+    let pcToLine = [];
+    let lineToPc = [];
     let pc = 0;
-    for (const line of lines) {
+    for (const [i, line] of lines.entries()) {
         switch (line?.type) {
             case "instruction":
                 instructions.push(line.instruction);
+                pcToLine.push(i);
+                lineToPc.push(pc);
                 pc++;
                 break;
             case "label":
                 labels.set(line.label, pc);
+                lineToPc.push(undefined);
+                break;
+            default:
+                lineToPc.push(undefined);
                 break;
         }
     }
 
-    return [instructions, labels];
+    return {
+        instructions,
+        labels,
+        pcToLine,
+        lineToPc,
+    };
 }
