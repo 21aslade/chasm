@@ -83,12 +83,6 @@ const str = separatedPair(
 
 const regVal = separatedPair(register, ws(tag(",")), value);
 
-const mov = separatedPair(tag("mov"), space1, regVal).map(([op, [dest, src]]) => ({
-    op,
-    dest,
-    src,
-}));
-
 const condition = alt<Condition>(
     tag("al"),
     tag("eq"),
