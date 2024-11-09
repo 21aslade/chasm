@@ -105,12 +105,15 @@ function operationFlags(a: number, b: number, c: number): Flags {
     const overflow =
         (a >= 0x80 && b >= 0x80 && result < 0x80) ||
         (a < 0x80 && b < 0x80 && result >= 0x80);
-    return {
+
+    const flags = {
         carry: (c & ~0xff) != 0,
         negative: result >= 0x80,
         zero: result === 0,
         overflow,
     };
+
+    return flags;
 }
 
 function meetsCondition(cond: Condition, flags: Flags): boolean {
@@ -261,8 +264,8 @@ function nop(): Effect {
 
 function cmp(processor: Processor, a: Register, b: Value): Effect {
     const aVal = processor.registers[a]!!;
-    const bVal = evalValue(b, processor.registers);
-    const c = aVal - bVal;
+    const bVal = -evalValue(b, processor.registers) & 0xff;
+    const c = aVal + bVal;
 
     return {
         flags: operationFlags(aVal, bVal, c),
@@ -314,23 +317,23 @@ function arithOp(
 ): Effect {
     const aVal = processor.registers[a]!!;
     const bVal = evalValue(b, processor.registers);
-    const c = operation(op)(aVal, bVal);
+    const realB = op === "sub" ? -bVal & 0xff : bVal;
+    const c = operation(op)(aVal, realB);
 
     return {
         regUpdate: {
             reg: dest,
             value: c & 0xff,
         },
-        flags: operationFlags(aVal, bVal, c),
+        flags: operationFlags(aVal, realB, c),
     };
 }
 
 function operation(op: ArithOpcode): (a: number, b: number) => number {
     switch (op) {
         case "add":
-            return (a, b) => a + b;
         case "sub":
-            return (a, b) => a + (0x100 - b);
+            return (a, b) => a + b;
         case "and":
             return (a, b) => a & b;
         case "or":

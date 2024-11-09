@@ -139,7 +139,7 @@ describe("instructions", () => {
             flags: {
                 zero: true,
                 negative: false,
-                carry: false,
+                carry: true,
                 overflow: false,
             },
         });
