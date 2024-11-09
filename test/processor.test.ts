@@ -1,7 +1,7 @@
 import { describe, expect, test } from "@jest/globals";
 import * as fs from "node:fs/promises";
 import { applyEffect } from "../dist/effect.js";
-import { instructionEffect } from "../dist/instructions.js";
+import { Instruction, instructionEffect } from "../dist/instructions.js";
 import { parseFile, Program, toProgram } from "../dist/parser.js";
 import { initializeProcessor, Processor } from "../dist/processor.js";
 
@@ -16,7 +16,7 @@ async function testFile(path: string): Promise<Processor> {
 
 function runToCompletion(program: Program, initial: Processor): Processor {
     let processor = initial;
-    let instruction;
+    let instruction: Instruction;
     while (!processor.halted && processor.pc < program.instructions.length) {
         instruction = program.instructions[processor.pc];
         const effect = instructionEffect(processor, program.labels, instruction);

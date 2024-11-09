@@ -21,7 +21,6 @@ import {
 import { Result } from "wombo/result";
 import { completed, Parser, ParserFunction } from "wombo";
 import { Option } from "wombo/option";
-import { ParseError } from "wombo/parseResult";
 
 export type Line = (
     | { type: "instruction"; instruction: Instruction }
@@ -182,21 +181,30 @@ const lineEnding = terminated(
     ),
 );
 
-const line = alt<Line>(
-    pair(preceded(space1, opt(instruction)), lineEnding).map(([i, c]) => {
-        if (i.isSome()) {
-            return { type: "instruction", instruction: i.value, comment: c.value };
+const line: Parser<Line> = pair(
+    ws(
+        opt(
+            alt<Line>(
+                instruction.map((i) => ({ type: "instruction", instruction: i })),
+                terminated(label, ws(tag(":"))).map((label) => ({
+                    type: "label",
+                    label,
+                })),
+            ),
+        ),
+    ),
+    lineEnding,
+).map(([line, comment]) => {
+    if (line.isSome()) {
+        if (comment.isSome()) {
+            return { ...line.value, comment: comment.value };
         } else {
-            return { type: "empty", comment: c.value };
+            return line.value;
         }
-    }),
-    pair(terminated(label, tag(":")), lineEnding).map(([l, c]) => ({
-        type: "label",
-        label: l,
-        comment: c.value,
-    })),
-    lineEnding.map((c) => ({ type: "empty", comment: c.value })),
-);
+    } else {
+        return { type: "empty", comment: comment.value };
+    }
+});
 
 export const parseFile = completed(many0(line));
 
