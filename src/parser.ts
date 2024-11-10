@@ -87,6 +87,8 @@ const condition = alt<Condition>(
     tag("eq"),
     tag("ne"),
     tag("gt"),
+    tag("lt"),
+    tag("ge"),
     tag("le"),
     tag("hi"),
     tag("lo"),
