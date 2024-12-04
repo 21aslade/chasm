@@ -15,12 +15,12 @@ async function testFile(path: string): Promise<Processor> {
 }
 
 function runToCompletion(program: Program, initial: Processor): Processor {
-    let processor = initial;
+    const processor = initial;
     let instruction: Instruction;
     while (!processor.halted && processor.pc < program.instructions.length) {
         instruction = program.instructions[processor.pc];
         const effect = instructionEffect(processor, program.labels, instruction);
-        processor = applyEffect(processor, effect);
+        applyEffect(processor, effect);
     }
 
     return processor;

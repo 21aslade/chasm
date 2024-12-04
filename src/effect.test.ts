@@ -12,9 +12,8 @@ describe("effect", () => {
             },
         };
 
-        const result = applyEffect(processor, effect);
-
-        expect(result.registers[2]).toBe(42);
+        applyEffect(processor, effect);
+        expect(processor.registers[2]).toBe(42);
     });
 
     it("writes to memory", () => {
@@ -26,9 +25,8 @@ describe("effect", () => {
             },
         };
 
-        const result = applyEffect(processor, effect);
-
-        expect(result.memory[10]).toBe(0x7b);
+        applyEffect(processor, effect);
+        expect(processor.memory[10]).toBe(0x7b);
     });
 
     it("updates processor flags", () => {
@@ -40,11 +38,10 @@ describe("effect", () => {
             },
         };
 
-        const result = applyEffect(processor, effect);
-
-        expect(result.flags.zero).toBe(true);
-        expect(result.flags.negative).toBe(false);
-        expect(result.flags.carry).toBe(false);
+        applyEffect(processor, effect);
+        expect(processor.flags.zero).toBe(true);
+        expect(processor.flags.negative).toBe(false);
+        expect(processor.flags.carry).toBe(false);
     });
 
     it("jumps to a new program counter", () => {
@@ -53,9 +50,8 @@ describe("effect", () => {
             jump: 100,
         };
 
-        const result = applyEffect(processor, effect);
-
-        expect(result.pc).toBe(100);
+        applyEffect(processor, effect);
+        expect(processor.pc).toBe(100);
     });
 
     it("pushes to stack", () => {
@@ -64,9 +60,8 @@ describe("effect", () => {
             stack: { type: "push", val: 0x42 },
         };
 
-        const result = applyEffect(processor, effect);
-
-        expect(result.callStack).toEqual([0x42]);
+        applyEffect(processor, effect);
+        expect(processor.callStack).toEqual([0x42]);
     });
 
     it("pops from stack", () => {
@@ -76,9 +71,8 @@ describe("effect", () => {
             stack: { type: "pop" },
         };
 
-        const result = applyEffect(processor, effect);
-
-        expect(result.callStack).toEqual([]);
+        applyEffect(processor, effect);
+        expect(processor.callStack).toEqual([]);
     });
 
     it("halts the processor", () => {
@@ -87,9 +81,8 @@ describe("effect", () => {
             halt: true,
         };
 
-        const result = applyEffect(processor, effect);
-
-        expect(result.halted).toBe(true);
+        applyEffect(processor, effect);
+        expect(processor.halted).toBe(true);
     });
 
     it("applies multiple effects at once", () => {
@@ -105,14 +98,13 @@ describe("effect", () => {
             halt: true,
         };
 
-        const result = applyEffect(processor, effect);
-
-        expect(result.registers[1]).toBe(42);
-        expect(result.memory[20]).toBe(0x55);
-        expect(result.flags.zero).toBe(true);
-        expect(result.flags.carry).toBe(false);
-        expect(result.pc).toBe(200);
-        expect(result.halted).toBe(true);
+        applyEffect(processor, effect);
+        expect(processor.registers[1]).toBe(42);
+        expect(processor.memory[20]).toBe(0x55);
+        expect(processor.flags.zero).toBe(true);
+        expect(processor.flags.carry).toBe(false);
+        expect(processor.pc).toBe(200);
+        expect(processor.halted).toBe(true);
     });
 });
 

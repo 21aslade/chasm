@@ -22,64 +22,72 @@ type Write = {
 
 type StackUpdate = { type: "push"; val: number } | { type: "pop" };
 
-function updateReg(registers: Uint8Array, update: RegUpdate): Uint8Array {
-    const result = new Uint8Array(registers);
-    result[update.reg] = update.value;
-    return result;
+function updateReg(registers: Uint8Array, update: RegUpdate) {
+    registers[update.reg] = update.value;
 }
 
-function applyWrite(memory: Uint8Array, write: Write): Uint8Array {
+function applyWrite(memory: Uint8Array, write: Write) {
     if (write.addr > memorySize) {
         throw new Error(
             `Attempted to write to out of bounds address ${write.addr} (value ${write.value})`,
         );
     }
 
-    const result = new Uint8Array(memory);
-    result[write.addr] = write.value;
+    memory[write.addr] = write.value;
+}
+
+function applyFlags(flags: Flags, setters: Partial<Flags>) {
+    flags.carry = setters.carry ?? flags.carry;
+    flags.negative = setters.negative ?? flags.negative;
+    flags.overflow = setters.overflow ?? flags.overflow;
+    flags.zero = setters.zero ?? flags.zero;
+}
+
+export function applyEffect(processor: Processor, effect: Effect) {
+    if (effect.flags !== undefined) {
+        applyFlags(processor.flags, effect.flags);
+    }
+
+    if (effect.write !== undefined) {
+        applyWrite(processor.memory, effect.write);
+    }
+
+    if (effect.regUpdate !== undefined) {
+        updateReg(processor.registers, effect.regUpdate);
+    }
+
+    processor.pc = effect.jump ?? processor.pc + 1;
+
+    switch (effect.stack?.type) {
+        case "push":
+            processor.callStack.push(effect.stack.val);
+            break;
+        case "pop":
+            processor.callStack.pop();
+            break;
+    }
+
+    processor.halted = effect.halt ?? processor.halted;
+}
+
+export function applyEffectCoW(processor: Processor, effect: Effect): Processor {
+    const result = cloneEffectTargets(processor, effect);
+    applyEffect(result, effect);
     return result;
 }
 
-function applyFlags(flags: Flags, setters: Partial<Flags>): Flags {
-    return {
-        carry: setters.carry ?? flags.carry,
-        negative: setters.negative ?? flags.negative,
-        overflow: setters.overflow ?? flags.overflow,
-        zero: setters.zero ?? flags.zero,
-    };
-}
-
-export function applyEffect(processor: Processor, effect: Effect): Processor {
-    const flags =
-        effect.flags !== undefined
-            ? applyFlags(processor.flags, effect.flags)
-            : processor.flags;
-
+function cloneEffectTargets(processor: Processor, effect: Effect): Processor {
+    const flags = effect.flags !== undefined ? { ...processor.flags } : processor.flags;
     const memory =
-        effect.write !== undefined
-            ? applyWrite(processor.memory, effect.write)
-            : processor.memory;
-
+        effect.write !== undefined ? new Uint8Array(processor.memory) : processor.memory;
     const registers =
         effect.regUpdate !== undefined
-            ? updateReg(processor.registers, effect.regUpdate)
+            ? new Uint8Array(processor.registers)
             : processor.registers;
-
-    const pc = effect.jump ?? processor.pc + 1;
-
+    const pc = processor.pc;
     const callStack =
-        (() => {
-            switch (effect.stack?.type) {
-                case "push":
-                    return [...processor.callStack, effect.stack.val];
-                case "pop":
-                    return processor.callStack.slice(0, processor.callStack.length - 1);
-                default:
-                    return undefined;
-            }
-        })() ?? processor.callStack;
-
-    const halted = effect.halt ?? processor.halted;
+        effect.stack !== undefined ? [...processor.callStack] : processor.callStack;
+    const halted = processor.halted;
 
     return {
         flags,

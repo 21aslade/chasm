@@ -32,3 +32,14 @@ export function initializeProcessor(): Processor {
         halted: false,
     };
 }
+
+export function cloneProcessor(processor: Processor): Processor {
+    return {
+        registers: new Uint8Array(processor.registers),
+        memory: new Uint8Array(processor.memory),
+        flags: { ...processor.flags },
+        pc: processor.pc,
+        callStack: [...processor.callStack],
+        halted: processor.halted,
+    };
+}
