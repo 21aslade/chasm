@@ -75,6 +75,118 @@ export function isArithOpcode(s: string): s is ArithOpcode {
     return arithOpcode.has(s);
 }
 
+export function isInstruction(i: unknown): i is Instruction {
+    if (typeof i !== "object" || i === null) {
+        return false;
+    }
+
+    const instruction = i as Instruction;
+    switch (instruction.op) {
+        case "ldr":
+            return isLdr(instruction.dest, instruction.src);
+        case "str":
+            return isStr(instruction.dest, instruction.src);
+        case "b":
+            return isB(instruction.label, instruction.condition);
+        case "call":
+            return typeof instruction.label === "string";
+        case "ret":
+        case "hlt":
+        case "nop":
+            return true;
+        case "cmp":
+            return isTwoOp(instruction.a, instruction.b);
+        case "mov":
+        case "neg":
+        case "not":
+            return isTwoOp(instruction.dest, instruction.src);
+        default:
+            return (
+                isArithOpcode(instruction.op) &&
+                isArithOp(instruction.dest, instruction.a, instruction.b)
+            );
+    }
+}
+
+function isCondition(cond: string): cond is Condition {
+    switch (cond) {
+        case "al":
+        case "eq":
+        case "ne":
+        case "gt":
+        case "lt":
+        case "ge":
+        case "le":
+        case "hi":
+        case "lo":
+        case "hs":
+        case "ls":
+        case "pl":
+        case "mi":
+        case "vs":
+        case "vc":
+            return true;
+        default:
+            return false;
+    }
+}
+
+function isB(label: unknown, cond: unknown): boolean {
+    return typeof label === "string" && typeof cond === "string" && isCondition(cond);
+}
+
+function isLdr(dest: unknown, src: unknown): boolean {
+    return typeof dest === "number" && isRegister(dest) && isAddress(src);
+}
+
+function isStr(dest: unknown, src: unknown): boolean {
+    return isAddress(dest) && typeof src === "number" && isRegister(src);
+}
+
+function isTwoOp(dest: unknown, src: unknown): boolean {
+    return typeof dest === "number" && isRegister(dest) && isValue(src);
+}
+
+function isArithOp<S>(dest: unknown, a: unknown, b: unknown): boolean {
+    return (
+        typeof dest === "number" &&
+        isRegister(dest) &&
+        typeof a === "number" &&
+        isRegister(a) &&
+        isValue(b)
+    );
+}
+
+export function isValue(v: unknown): v is Value {
+    if (typeof v !== "object" || v === null) {
+        return false;
+    }
+
+    const value = v as Value;
+    if (value.type === "register") {
+        return typeof value.reg === "number" && isRegister(value.reg);
+    } else if (value.type === "constant") {
+        return typeof value.val === "number" && value.val < 0x100;
+    } else {
+        return false;
+    }
+}
+
+export function isAddress(a: unknown): a is Address {
+    if (typeof a !== "object" || a === null) {
+        return false;
+    }
+
+    const addr = a as Address;
+    if (addr.type === "register") {
+        return typeof addr.reg === "number" && isRegister(addr.reg);
+    } else if (addr.type === "address") {
+        return typeof addr.addr === "number" && addr.addr < 0x100;
+    } else {
+        return false;
+    }
+}
+
 function derefAddr(addr: Address, registers: Uint8Array, memory: Uint8Array): number {
     const address = addr.type === "register" ? registers[addr.reg]!! : addr.addr;
     if (address > memorySize) {
